@@ -7,11 +7,29 @@ import (
 )
 
 /*
+GetEnv takes the name of the environment variable as the first parameter. If 
+the environment variable is found, the value is returned. If the environment 
+variable is not found, the second parameter is used for a default value. If the 
+second parameter is not set, an error is returned. You may choose to provide 
+default value depending on your needs.
+*/
+func GetEnv(varName string, params ...string) (string, error) {
+	val, ok := os.LookupEnv(varName)
+	if !ok {
+		if len(params) == 0 {
+			return val, fmt.Errorf("%s is not set", varName)
+		}
+		return params[0], nil
+	}
+	return val, nil
+}
+
+/*
 GetEnvAsInt takes the name of the environment variable as the first parameter. If 
 the environment variable is found and the value is of type integer, the value is 
-returned. Otherwise, 0 is returned with an error. If the environment variable is 
-not found, the second parameter is used for a default value. If the second 
-parameter is not set, an error is returned.
+returned. If the environment variable is not found, the second parameter is used 
+for a default value. If the second parameter is not set, an error is returned. You 
+may choose to provide default value depending on your needs.
 */
 func GetEnvAsInt(varName string, params ...int) (int, error) {
 	val, ok := os.LookupEnv(varName)
@@ -25,11 +43,11 @@ func GetEnvAsInt(varName string, params ...int) (int, error) {
 }
 
 /*
-GetEnvAsInt takes the name of the environment variable as the first parameter. 
+GetEnvAsBool takes the name of the environment variable as the first parameter. 
 If the environment variable is found and the value is of type boolean, the value 
-is returned. Otherwise, 0 is returned with an error. If the environment variable 
-is not found, the second parameter is used for a default value. If the second 
-parameter is not set, an error is returned.
+is returned. If the environment variable is not found, the second parameter is 
+used for a default value. If the second parameter is not set, an error is 
+returned. You may choose to provide default value depending on your needs.
 */
 func GetEnvAsBool(varName string, params ...bool) (bool, error) {
 	val, ok := os.LookupEnv(varName)
