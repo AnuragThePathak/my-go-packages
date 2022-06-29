@@ -39,7 +39,11 @@ func GetEnvAsInt(varName string, params ...int) (int, error) {
 		}
 		return params[0], nil
 	}
-	return strconv.Atoi(val)
+	num, err := strconv.Atoi(val)
+	if err != nil {
+		return num, fmt.Errorf("%s can't be parsed as an integer", varName)
+	}
+	return num, nil
 }
 
 /*
@@ -57,5 +61,9 @@ func GetEnvAsBool(varName string, params ...bool) (bool, error) {
 		}
 		return params[0], nil
 	}
-	return strconv.ParseBool(val)
+	b, err := strconv.ParseBool(val)
+	if err != nil {
+		return b, fmt.Errorf("%s can't be parsed as a boolean", varName)
+	}
+	return b, nil
 }
