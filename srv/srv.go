@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -121,22 +122,41 @@ func (s *server) StartWithGracefulShutdown(
 }
 
 // Start starts the HTTP server without signal handling or graceful shutdown.
-// It is intended for use in test scenarios.
+// It is intended for use in test scenarios. The server is guaranteed to be
+// listening by the time this function returns.
 func (s *server) Start() (*http.Server, error) {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.config.Port),
 		Handler: s.handler,
 	}
 
+	// Load TLS certificate if enabled
+	if s.config.TLSEnabled {
+		cert, err := tls.LoadX509KeyPair(s.config.TLSCertPath, s.config.TLSKeyPath)
+		if err != nil {
+			slog.Error("Failed to load TLS certificate", slog.String("component", "http-server"), slog.Any("error", err))
+			return nil, fmt.Errorf("failed to load TLS certificate: %w", err)
+		}
+		srv.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+	}
+
+	// Bind the port synchronously — if this fails (e.g. port taken),
+	// the error is returned to the caller immediately.
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on %s: %w", srv.Addr, err)
+	}
+
+	// Wrap with TLS if enabled
+	if s.config.TLSEnabled {
+		ln = tls.NewListener(ln, srv.TLSConfig)
+	}
+
+	// Serve on the already-bound listener. By this point, the port is
+	// bound and the server is accepting connections.
 	go func() {
 		slog.Info("Starting server (test mode)", slog.String("component", "http-server"), slog.String("addr", srv.Addr))
-		var err error
-		if s.config.TLSEnabled {
-			err = srv.ListenAndServeTLS(s.config.TLSCertPath, s.config.TLSKeyPath)
-		} else {
-			err = srv.ListenAndServe()
-		}
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("Test server failed", slog.String("component", "http-server"), slog.Any("error", err))
 		}
 	}()
