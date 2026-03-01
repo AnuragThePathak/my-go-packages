@@ -103,13 +103,11 @@ func (s *server) StartWithGracefulShutdown(
 
 	var wg sync.WaitGroup
 	for _, h := range handlers {
-		wg.Add(1)
-		go func(handler CleanupHandler) {
-			defer wg.Done()
-			if err := handler.Shutdown(shutdownCtx); err != nil {
+		wg.Go(func() {
+			if err := h.Shutdown(shutdownCtx); err != nil {
 				slog.Error("Cleanup handler failed", slog.String("component", "http-server"), slog.Any("error", err))
 			}
-		}(h)
+		})
 	}
 	wg.Wait()
 
